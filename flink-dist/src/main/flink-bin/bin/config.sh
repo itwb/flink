@@ -641,22 +641,29 @@ runBashJavaUtilsCmd() {
     echo "$output"
 }
 
-extractExecutionParams() {
-    local execution_config=$1
+extractExecutionResults() {
+    local output="$1"
+    local expected_lines="$2"
+    local EXECUTION_PREFIX="BASH_JAVA_UTILS_EXEC_RESULT:"
+    local execution_results
+
+    IFS=$'\n' execution_results=($(echo "${output}" | grep ${EXECUTION_PREFIX}))
+    if [[ ${#execution_results[@]} != ${expected_lines} ]]; then
+        echo "[ERROR] The execution results has unexpected number of lines, expected: ${expected_lines}, actual: ${#execution_results[@]}." 1>&2
+        echo "[ERROR] An execution result line is expected following the prefix '${EXECUTION_PREFIX}'" 1>&2
+        echo "$output" 1>&2
+        exit 1
+    fi
+
+    for result in ${execution_results[@]}
+    do
+        echo ${result} | sed "s/$EXECUTION_PREFIX//"
+    done
+}
+
+extractLoggingOutputs() {
+    local output="$1"
     local EXECUTION_PREFIX="BASH_JAVA_UTILS_EXEC_RESULT:"
 
-    local num_lines=$(echo "$execution_config" | wc -l)
-    if ! [[ ${num_lines} == 1 ]]; then
-        echo "[ERROR] Unexpected result ($num_lines lines): $execution_config" 1>&2
-        echo "[ERROR] extractExecutionParams only accepts exactly one line as the input" 1>&2
-        exit 1
-    fi
-
-    if ! [[ ${execution_config} =~ ^${EXECUTION_PREFIX}.* ]]; then
-        echo "[ERROR] Unexpected result: $execution_config" 1>&2
-        echo "[ERROR] The output of BashJavaUtils is expected to be the execution result, following the prefix '${EXECUTION_PREFIX}'" 1>&2
-        exit 1
-    fi
-
-    echo ${execution_config} | sed "s/$EXECUTION_PREFIX//"
+    echo "${output}" | grep -v ${EXECUTION_PREFIX}
 }
